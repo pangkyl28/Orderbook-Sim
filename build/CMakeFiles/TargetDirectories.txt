@@ -1,3 +1,0 @@
-/Users/kylerpang/Desktop/NU/winter26/orderbook-simulator/build/CMakeFiles/sim.dir
-/Users/kylerpang/Desktop/NU/winter26/orderbook-simulator/build/CMakeFiles/edit_cache.dir
-/Users/kylerpang/Desktop/NU/winter26/orderbook-simulator/build/CMakeFiles/rebuild_cache.dir
