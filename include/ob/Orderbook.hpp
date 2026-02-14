@@ -23,6 +23,11 @@ namespace ob {
             // need a way to represent market orders
 
 
+            const vector<Order>& get_bids() const { return bids; }
+            const vector<Order>& get_asks() const { return asks; }
+            Order* create_order(OrderSide side, int price_tick, int quantity);
+            
+
         private:
             // helper functions and other stuff for order matching and trade execution
             int cur_trade_id = 0;

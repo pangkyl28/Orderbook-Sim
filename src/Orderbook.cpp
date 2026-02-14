@@ -86,7 +86,18 @@ namespace ob {
                 return 0; // success
             }
         }
-        return -1 // order_id not found
+        return -1; // order_id not found
+    }
+
+    Order* OrderBook::create_order(OrderSide side, int price_tick, int quantity) {
+        Order order = {
+            .order_id = cur_seq++,
+            .side = side,
+            .price_tick = price_tick,
+            .quantity = quantity,
+            .seq = cur_seq
+        };
+        return new Order(order);
     }
     
 } // namespace ob
