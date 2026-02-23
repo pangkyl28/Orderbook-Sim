@@ -2,10 +2,18 @@
 #include "ob/OrderBook.hpp"
 #include <vector>
 #include <cassert>
+#include "ob/BitfinexFeed.hpp"
+
+int main() {
+    ob::OrderBook book;
+    ob::BitfinexFeed feed(book);
+    feed.run("tBTCUSD");
+    return 0;
+}
 using namespace std;
 
 
-
+/*
 void print_trade(const Trade& trade)
 {
     cout << "Trade ID: " << trade.trade_id << ", Price Tick: " << trade.price_tick 
@@ -40,7 +48,9 @@ void print_orderbook(const ob::OrderBook& ob)
     }
     return;
 }
+*/
 
+/*
 int main() {
     cout << "Hello, Orderbook Simulator!\n" << endl;
 
@@ -88,3 +98,4 @@ int main() {
 
     return 0;
 }
+*/

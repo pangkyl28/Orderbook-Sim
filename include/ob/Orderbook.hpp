@@ -1,7 +1,5 @@
 #pragma once
 
-using namespace std;
-
 #include "Order.hpp"
 #include "Trade.hpp"
 #include <vector>
@@ -11,7 +9,7 @@ namespace ob {
     class OrderBook {
         public:
             // should return the list of trades executed as a result of adding the order
-            vector<Trade> add_limit(const Order& order); 
+            std::vector<Trade> add_limit(const Order& order); 
 
             // should cancel the order with given order_id
             // return 0 on success, -1 if order_id not found
@@ -23,10 +21,14 @@ namespace ob {
             // need a way to represent market orders
 
 
-            const vector<Order>& get_bids() const { return bids; }
-            const vector<Order>& get_asks() const { return asks; }
+            const std::vector<Order>& get_bids() const { return bids; }
+            const std::vector<Order>& get_asks() const { return asks; }
             Order* create_order(OrderSide side, int price_tick, int quantity);
             
+            void upsert_by_id(const Order& o);
+            void erase_by_id(int order_id);
+            void clear_book();
+
 
         private:
             // helper functions and other stuff for order matching and trade execution
@@ -34,8 +36,8 @@ namespace ob {
             int cur_seq = 0;
 
             // for now use a vector to store orders, will need a more efficient structure for real implementation
-            vector<Order> bids;
-            vector<Order> asks;
+            std::vector<Order> bids;
+            std::vector<Order> asks;
     };
 
 }

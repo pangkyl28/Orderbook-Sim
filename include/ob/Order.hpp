@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 
 enum class OrderSide {
     BID,
@@ -10,7 +11,7 @@ struct Order{
     OrderSide side;
     int price_tick; // i think in prediction markets we should be using this instead of price
     // ^ if we're working in kalshi
-    int quantity;
+    int64_t quantity;
     int seq; // time basically
 };
 

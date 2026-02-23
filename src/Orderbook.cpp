@@ -1,15 +1,45 @@
 #include "ob/OrderBook.hpp"
+#include <vector>
+#include <algorithm>
 namespace ob {
-    vector<Trade> OrderBook::add_limit(const Order& order) {
+
+    void OrderBook::upsert_by_id(const Order& o) {
+        auto& book = (o.side == OrderSide::BID) ? bids : asks;
+
+        for (auto& existing : book) {
+            if (existing.order_id == o.order_id) {
+                existing = o;   // replace
+                return;
+            }
+        }
+        book.push_back(o); // insert
+    }
+
+    void OrderBook::erase_by_id(int order_id) {
+        auto erase_from = [&](std::vector<Order>& book) {
+            book.erase(std::remove_if(book.begin(), book.end(),
+                                    [&](const Order& x) { return x.order_id == order_id; }),
+                    book.end());
+        };
+        erase_from(bids);
+        erase_from(asks);
+    }
+
+    void OrderBook::clear_book() {
+        bids.clear();
+        asks.clear();
+    }
+
+    std::vector<Trade> OrderBook::add_limit(const Order& order) {
         // TODO : implement order matching logic here
-        vector<Trade> trades_executed;
-        int remaining_qty = order.quantity;
+        std::vector<Trade> trades_executed;
+        int64_t remaining_qty = order.quantity;
 
         if (order.side == OrderSide::BID) {
             while (remaining_qty > 0 && !asks.empty() && asks[0].price_tick <= order.price_tick)
             {
                 Order& best_ask = asks[0];
-                int trade_qty = min(remaining_qty, best_ask.quantity);
+                int64_t trade_qty = std::min(remaining_qty, best_ask.quantity);
                 Trade trade = {
                     .trade_id = cur_trade_id++,
                     .price_tick = best_ask.price_tick,
@@ -40,7 +70,7 @@ namespace ob {
             while (remaining_qty > 0 && !bids.empty() && bids[0].price_tick >= order.price_tick)
             {
                 Order& best_bid = bids[0];
-                int trade_qty = min(remaining_qty, best_bid.quantity);
+                int64_t trade_qty = std::min(remaining_qty, best_bid.quantity);
                 Trade trade = {
                     .trade_id = cur_trade_id++,
                     .price_tick = best_bid.price_tick,

@@ -1,9 +1,10 @@
 #pragma once
+#include <cstdint>
 
 struct Trade{
     int trade_id;
     int price_tick;
-    int quantity;
+    int64_t quantity;
     int taker_order_id; // id of the order that initiated the trade
     int maker_order_id; // id of the order that was resting in the book
 };
