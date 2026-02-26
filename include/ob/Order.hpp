@@ -1,4 +1,5 @@
 #pragma once
+#include <stdint.h>
 
 enum class OrderSide {
     BID,
@@ -6,12 +7,9 @@ enum class OrderSide {
 };
 
 struct Order{
-    int order_id;
+    uint64_t order_id;
+    uint64_t seq; // time basically
+    uint16_t quantity;
+    uint8_t price_tick;
     OrderSide side;
-    int price_tick; // i think in prediction markets we should be using this instead of price
-    // ^ if we're working in kalshi
-    int quantity;
-    int seq; // time basically
 };
-
-
