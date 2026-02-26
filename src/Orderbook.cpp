@@ -1,15 +1,16 @@
 #include "ob/OrderBook.hpp"
+#include <algorithm>
 namespace ob {
-    vector<Trade> OrderBook::add_limit(const Order& order) {
+    std::vector<Trade> OrderBook::add_limit(const Order& order) {
         // TODO : implement order matching logic here
         vector<Trade> trades_executed;
-        int remaining_qty = order.quantity;
+        uint16_t remaining_qty = order.quantity;
 
         if (order.side == OrderSide::BID) {
             while (remaining_qty > 0 && !asks.empty() && asks[0].price_tick <= order.price_tick)
             {
                 Order& best_ask = asks[0];
-                int trade_qty = min(remaining_qty, best_ask.quantity);
+                uint16_t trade_qty = std::min(remaining_qty, best_ask.quantity);
                 Trade trade = {
                     .trade_id = cur_trade_id++,
                     .price_tick = best_ask.price_tick,
@@ -40,7 +41,7 @@ namespace ob {
             while (remaining_qty > 0 && !bids.empty() && bids[0].price_tick >= order.price_tick)
             {
                 Order& best_bid = bids[0];
-                int trade_qty = min(remaining_qty, best_bid.quantity);
+                int trade_qty = std::min(remaining_qty, best_bid.quantity);
                 Trade trade = {
                     .trade_id = cur_trade_id++,
                     .price_tick = best_bid.price_tick,
@@ -71,7 +72,6 @@ namespace ob {
     }
 
     int OrderBook::cancel_order(int order_id) {
-        // TODO : implement order cancellation logic here
         for (size_t i = 0; i < bids.size(); i++)
         {
             if (bids[i].order_id == order_id) {
