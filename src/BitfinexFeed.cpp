@@ -106,7 +106,13 @@ void BitfinexFeed::run(const std::string& pair) {
                 const int price_tick = price_to_cents(price);
                 const int64_t qty = btc_to_sats(std::fabs(amount));
 
-                Order o{order_id, side, price_tick, qty, cur_seq};
+                Order o{
+                    static_cast<uint64_t>(order_id),
+                    static_cast<uint64_t>(cur_seq),
+                    static_cast<uint64_t>(qty),
+                    static_cast<uint32_t>(price_tick),
+                    side
+                };
                 book_.upsert_by_id(o);
             }
 
@@ -130,7 +136,13 @@ void BitfinexFeed::run(const std::string& pair) {
             const int price_tick = price_to_cents(price);
             const int64_t qty = btc_to_sats(std::fabs(amount));
 
-            Order o{order_id, side, price_tick, qty, cur_seq};
+            Order o{
+                static_cast<uint64_t>(order_id),
+                static_cast<uint64_t>(cur_seq),
+                static_cast<uint64_t>(qty),
+                static_cast<uint32_t>(price_tick),
+                side
+            };
             book_.upsert_by_id(o);
             return;
         }

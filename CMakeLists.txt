@@ -20,20 +20,47 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/machinezone/IXWebSocket.git
     GIT_TAG v11.4.5
 )
-# enable TSL for ixwebsocket so wss:// works
 set(USE_TLS 1 CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(ixwebsocket)
 
+# core library
+add_library(orderbook_core
+    src/OrderBook.cpp
+)
+
+target_include_directories(orderbook_core PUBLIC
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# simulator
 add_executable(sim
     apps/main.cpp
-    src/OrderBook.cpp
     src/BitfinexFeed.cpp
 )
 
-target_include_directories(sim PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(sim PRIVATE
+    orderbook_core
+    ixwebsocket
+    nlohmann_json::nlohmann_json
+)
 
-# Most common:
-target_link_libraries(sim PRIVATE ixwebsocket nlohmann_json::nlohmann_json)
+# googletest
+FetchContent_Declare(
+    googletest
+    URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
+)
+FetchContent_MakeAvailable(googletest)
 
-# If you get "Target not found: ixwebsocket", change the above to:
-# target_link_libraries(sim PRIVATE ixwebsocket::ixwebsocket nlohmann_json::nlohmann_json)
+enable_testing()
+
+add_executable(orderbook_tests
+    tests/test_orderbook.cpp
+)
+
+target_link_libraries(orderbook_tests PRIVATE
+    orderbook_core
+    GTest::gtest_main
+)
+
+include(GoogleTest)
+gtest_discover_tests(orderbook_tests)

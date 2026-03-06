@@ -7,12 +7,11 @@ enum class OrderSide {
 };
 
 struct Order{
-    int order_id;
+    uint64_t order_id;
+    uint64_t seq; // time basically
+    uint64_t quantity;
+    uint32_t price_tick;
     OrderSide side;
-    int price_tick; // i think in prediction markets we should be using this instead of price
-    // ^ if we're working in kalshi
-    int64_t quantity;
-    int seq; // time basically
 };
 
 
