@@ -7,22 +7,23 @@
 #include <nlohmann/json.hpp>
 
 #include <atomic>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <iostream>
 #include <string>
 #include <thread>
-#include <chrono>
 
 namespace ob {
+
 using json = nlohmann::json;
 
-static int price_to_cents(double price) {
-    return static_cast<int>(llround(price * 100.0));
+static std::uint32_t price_to_tick(double price) {
+    return static_cast<std::uint32_t>(llround(price * 100.0));
 }
 
-static int64_t btc_to_sats(double btc) {
-    return static_cast<int64_t>(llround(btc * 100000000.0));
+static std::uint64_t btc_to_sats(double btc) {
+    return static_cast<std::uint64_t>(llround(btc * 100000000.0));
 }
 
 BitfinexFeed::BitfinexFeed(OrderBook& book) : book_(book) {}
@@ -33,15 +34,14 @@ void BitfinexFeed::run(const std::string& pair) {
     ix::WebSocket ws;
     ws.setUrl("wss://api.bitfinex.com/ws/2");
 
-    std::atomic<int> seq{0};
+    std::atomic<std::uint64_t> seq{0};
     std::atomic<int> chan_id{-1};
 
-    // Build subscribe payload once
     json sub = {
-        {"event","subscribe"},
-        {"channel","book"},
+        {"event", "subscribe"},
+        {"channel", "book"},
         {"pair", pair},
-        {"prec","R0"}
+        {"prec", "R0"}
     };
     const std::string sub_msg = sub.dump();
 
@@ -58,16 +58,17 @@ void BitfinexFeed::run(const std::string& pair) {
             return;
         }
 
-        if (msg->type != ix::WebSocketMessageType::Message) return;
+        if (msg->type != ix::WebSocketMessageType::Message) {
+            return;
+        }
 
         json j;
-        try { j = json::parse(msg->str); }
-        catch (...) { return; }
+        try {
+            j = json::parse(msg->str);
+        } catch (...) {
+            return;
+        }
 
-        // TEMP: uncomment if you want to see raw traffic
-        // std::cerr << "[bitfinex] msg: " << msg->str << "\n";
-
-        // subscription / event objects
         if (j.is_object()) {
             if (j.value("event", "") == "subscribed" &&
                 j.value("channel", "") == "book" &&
@@ -78,71 +79,79 @@ void BitfinexFeed::run(const std::string& pair) {
             return;
         }
 
-        // data arrays
-        if (!j.is_array() || j.size() < 2) return;
-
-        const int ch = j[0].get<int>();
-        if (chan_id.load() != -1 && ch != chan_id.load()) return;
-
-        // heartbeat: [chanId, "hb"]
-        if (j.size() == 2 && j[1].is_string() && j[1].get<std::string>() == "hb") return;
-
-        const int cur_seq = seq.fetch_add(1);
-
-        // Snapshot: [chanId, [ [id, price, amount], ... ] ]
-        if (j.size() == 2 && j[1].is_array() && j[1].size() > 0 && j[1][0].is_array()) {
-            book_.clear_book();
-
-            for (const auto& row : j[1]) {
-                if (!row.is_array() || row.size() < 3) continue;
-
-                const int order_id = row[0].get<int>();
-                const double price = row[1].get<double>();
-                const double amount = row[2].get<double>();
-
-                if (price == 0.0) continue;
-
-                const OrderSide side = (amount > 0.0) ? OrderSide::BID : OrderSide::ASK;
-                const int price_tick = price_to_cents(price);
-                const int64_t qty = btc_to_sats(std::fabs(amount));
-
-                Order o{
-                    static_cast<uint64_t>(order_id),
-                    static_cast<uint64_t>(cur_seq),
-                    static_cast<uint64_t>(qty),
-                    static_cast<uint32_t>(price_tick),
-                    side
-                };
-                book_.upsert_by_id(o);
-            }
-
-            std::cerr << "[bitfinex] snapshot loaded seq=" << cur_seq << "\n";
+        if (!j.is_array() || j.size() < 2) {
             return;
         }
 
-        // Update: [chanId, id, price, amount]
+        const int ch = j[0].get<int>();
+        if (chan_id.load() != -1 && ch != chan_id.load()) {
+            return;
+        }
+
+        if (j.size() == 2 && j[1].is_string() && j[1].get<std::string>() == "hb") {
+            return;
+        }
+
+        // Snapshot:
+        // [chanId, [ [id, price, amount], ... ] ]
+        if (j.size() == 2 && j[1].is_array() && !j[1].empty() && j[1][0].is_array()) {
+            book_.clear_book();
+
+            for (const auto& row : j[1]) {
+                if (!row.is_array() || row.size() < 3) {
+                    continue;
+                }
+
+                const std::int64_t raw_order_id = row[0].get<std::int64_t>();
+                const double price = row[1].get<double>();
+                const double amount = row[2].get<double>();
+
+                if (price == 0.0) {
+                    continue;
+                }
+
+                const OrderSide side = (amount > 0.0) ? OrderSide::BID : OrderSide::ASK;
+
+                Order o{
+                    .order_id = static_cast<std::uint64_t>(raw_order_id),
+                    .seq = ++seq,
+                    .quantity = btc_to_sats(std::fabs(amount)),
+                    .price_tick = price_to_tick(price),
+                    .side = side
+                };
+
+                book_.upsert_by_id(o);
+            }
+
+            std::cerr << "[bitfinex] snapshot loaded\n";
+            return;
+        }
+
+        // Update:
+        // [chanId, id, price, amount]
         if (j.size() == 4) {
-            const int order_id = j[1].get<int>();
+            const std::int64_t raw_order_id = j[1].get<std::int64_t>();
             const double price = j[2].get<double>();
             const double amount = j[3].get<double>();
 
-            // Delete when price==0
+            const std::uint64_t order_id = static_cast<std::uint64_t>(raw_order_id);
+
+            // delete
             if (price == 0.0) {
-                book_.erase_by_id(order_id);
+                book_.cancel_order(order_id);
                 return;
             }
 
             const OrderSide side = (amount > 0.0) ? OrderSide::BID : OrderSide::ASK;
-            const int price_tick = price_to_cents(price);
-            const int64_t qty = btc_to_sats(std::fabs(amount));
 
             Order o{
-                static_cast<uint64_t>(order_id),
-                static_cast<uint64_t>(cur_seq),
-                static_cast<uint64_t>(qty),
-                static_cast<uint32_t>(price_tick),
-                side
+                .order_id = order_id,
+                .seq = ++seq,
+                .quantity = btc_to_sats(std::fabs(amount)),
+                .price_tick = price_to_tick(price),
+                .side = side
             };
+
             book_.upsert_by_id(o);
             return;
         }
@@ -151,7 +160,9 @@ void BitfinexFeed::run(const std::string& pair) {
     ws.start();
     std::cerr << "[bitfinex] connecting...\n";
 
-    while (true) std::this_thread::sleep_for(std::chrono::seconds(1));
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
 }
 
 } // namespace ob
